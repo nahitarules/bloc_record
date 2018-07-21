@@ -143,16 +143,24 @@ require 'sqlite3'
    end
 
    def order(*args)
-     if args.count > 1
-       order = args.join(",")
-     else
-       order = args.first.to_s
+     ordered = []
+     args.each do |arg|
+       case arg
+       when String
+         ordered << arg
+       when Symbol
+         ordered << arg.to_s
+       when Hash
+         ordered << arg.map{|key, value| "#{key} #{value}"}
+       end
      end
+     order = ordered.join(",")
+
      rows = connection.execute <<-SQL
-       SELECT * FROM #{table}
-       ORDER BY #{order};
-     SQL
-     rows_to_array(rows)
+      SELECT * FROM #{table}
+      ORDER BY #{order};
+    SQL
+    rows_to_array(rows)
    end
 
    def join(*args)
@@ -172,11 +180,22 @@ require 'sqlite3'
            SELECT * FROM #{table}
            INNER JOIN #{args.first} ON #{args.first}.#{table}_id = #{table}.id
          SQL
+
+       when Hash
+         key = args.first.keys.first
+         value = args.first[key]
+         rows = connection.execute <<-SQL
+          SELECT * FROM #{table}
+          INNER JOIN #{key} on #{key}.#{table}.id = #{table}.id
+          INNER JOIN #{value} on #{value}.#{key}_id = #{key}.id;
+        SQL
        end
      end
 
      rows_to_array(rows)
    end
+
+
 
    private
 
@@ -188,6 +207,8 @@ require 'sqlite3'
    end
 
    def rows_to_array(rows)
-     rows.map { |row| new(Hash[columns.zip(row)]) }
+     collection = BlocRecord::Collection.new
+          rows.each { |row| collection << new(Hash[columns.zip(row)]) }
+          collection
    end
  end
