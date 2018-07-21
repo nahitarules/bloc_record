@@ -143,16 +143,24 @@ require 'sqlite3'
    end
 
    def order(*args)
-     if args.count > 1
-       order = args.join(",")
-     else
-       order = args.first.to_s
+     ordered = []
+     args.each do |arg|
+       case arg
+       when String
+         ordered << arg
+       when Symbol
+         ordered << arg.to_s
+       when Hash
+         ordered << arg.map{|key, value| "#{key} #{value}"}
+       end
      end
+     order = ordered.join(",")
+
      rows = connection.execute <<-SQL
-       SELECT * FROM #{table}
-       ORDER BY #{order};
-     SQL
-     rows_to_array(rows)
+      SELECT * FROM #{table}
+      ORDER BY #{order};
+    SQL
+    rows_to_array(rows)
    end
 
    def join(*args)
