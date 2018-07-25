@@ -98,8 +98,14 @@ require 'sqlite3'
 
      def destroy_all(conditions_hash=nil)
        if conditions_hash && !conditions_hash.empty?
-         conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
-         conditions = conditions_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+         if conditions_hash.class == Hash
+           conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
+           conditions = conditions_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+         elsif conditions_hash.class == String
+           conditions = conditions_hash
+         elsif conditions_hash.class == Array
+           conditions = conditions_hash.join(",")
+         end
 
          connection.execute <<-SQL
            DELETE FROM #{table}
