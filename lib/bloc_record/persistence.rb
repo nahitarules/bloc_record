@@ -36,6 +36,12 @@ require 'sqlite3'
      self.class.update(self.id, updates)
    end
 
+   def method_missing(m, *args)
+     attribute = m.to_s
+     updated = attribute.slice("update_")
+     update_attribute(updated, arg[0])
+   end
+
    module ClassMethods
      def create(attrs)
        attrs = BlocRecord::Utility.convert_keys(attrs)
@@ -53,9 +59,15 @@ require 'sqlite3'
      end
 
      def update(ids, updates)
-       updates = BlocRecord::Utility.convert_keys(updates)
-       updates.delete "id"
-       updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
+       if ids.class == Array && updates.class == Array
+        updates.each_with_index { |val, index| update(ids[index], val) }
+
+       else
+
+         updates = BlocRecord::Utility.convert_keys(updates)
+         updates.delete "id"
+         updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
+       end
 
        if ids.class == Fixnum
                 where_clause = "WHERE id = #{ids};"
@@ -64,7 +76,7 @@ require 'sqlite3'
               else
                 where_clause = ";"
               end
-              
+
        connection.execute <<-SQL
          UPDATE #{table}
          SET #{updates_array * ","} #{where_clause}
